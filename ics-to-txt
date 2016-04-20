@@ -1,0 +1,5 @@
+#!/usr/bin/env python
+
+import ics_to_txt.ics_to_txt
+if __name__ == '__main__':
+    ics_to_txt.ics_to_txt.main()
