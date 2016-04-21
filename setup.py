@@ -25,7 +25,10 @@ setup(
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Intended Audience :: Developers',
-        'Topic :: Artistic Software',
+        'Topic :: Communications',
+        'Topic :: Office/Business :: News/Diary',
+        'Topic :: Office/Business :: Scheduling',
+        'Topic :: Text Processing',
         'License :: OSI Approved :: Apache Software License',
         'Programming Language :: Python :: 3',
     ],
