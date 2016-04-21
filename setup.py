@@ -36,7 +36,7 @@ setup(
 
     install_requires=[
         'ics',
-        'pytz',
+        'tzlocal',
     ],
 
     entry_points={

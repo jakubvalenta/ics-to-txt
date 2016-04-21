@@ -2,11 +2,7 @@ import argparse
 import datetime
 
 import ics
-import pytz
-
-
-DATE_FORMAT_IN = '%m/%d/%y %I:%M:%S'
-TIMEZONE = pytz.timezone('Europe/Prague')
+import tzlocal
 
 
 def main():
@@ -26,10 +22,16 @@ def main():
 
     args = parser.parse_args()
 
+    if args.filterbegin:
+        tz = tzlocal.get_localzone()
+        filterbegin_aware = tz.localize(args.filterbegin)
+    else:
+        filterbegin_aware = None
+
     events = parse_ics(args.inputfile)
     events_filtered = filter_events(
         events,
-        begin=args.filterbegin,
+        begin=filterbegin_aware,
         name=args.filtername
     )
     events_sorted = sorted(events_filtered, key=lambda x: x['begin'])
@@ -47,9 +49,7 @@ def main():
 
 def valid_date(s):
     try:
-        return TIMEZONE.localize(
-            datetime.datetime.strptime(s, '%Y-%m-%d')
-        )
+        return datetime.datetime.strptime(s, '%Y-%m-%d')
     except ValueError:
         msg = 'Not a valid date: "{0}".'.format(s)
         raise argparse.ArgumentTypeError(msg)
