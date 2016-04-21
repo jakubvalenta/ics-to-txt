@@ -15,12 +15,14 @@ def main():
         'format'
     )
     parser.add_argument('--input', '-i', dest='inputfile', required=True,
-                        help='input file path')
-    parser.add_argument('--filter-begin', '-fb', dest='filterbegin',
+                        help='input ICS file path')
+    parser.add_argument('--begin', '-b', dest='filterbegin',
                         type=valid_date,
-                        help='input file path')
-    parser.add_argument('--filter-name', '-fn', dest='filtername',
-                        help='input file path')
+                        help='print only events newer then or equal to passed '
+                        'date; format YYYY-MM-DD')
+    parser.add_argument('--name', '-n', dest='filtername',
+                        help='print only events the subject of which contains '
+                        'passed string; case-insensitive')
 
     args = parser.parse_args()
 
