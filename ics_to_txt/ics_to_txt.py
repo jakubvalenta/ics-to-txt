@@ -76,7 +76,8 @@ def parse_ics(file_path):
                 end = event.begin
             else:
                 all_day = False
-                end = event.end.to('local')
+                timezone = event.begin.datetime.tzinfo
+                end = event.end.to(timezone)
             yield({
                 'name': event.name,
                 'begin': event.begin.datetime,
