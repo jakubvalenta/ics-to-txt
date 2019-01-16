@@ -1,50 +1,41 @@
 import argparse
 import datetime
+from dataclasses import dataclass
+from functools import partial, reduce
 
 import ics
 import tzlocal
 
 
-def main():
-    parser = argparse.ArgumentParser(
-        description='ICS to TXT: Print an ICS calendar in a human readable '
-        'format'
-    )
-    parser.add_argument('--input', '-i', dest='inputfile', required=True,
-                        help='input ICS file path')
-    parser.add_argument('--begin', '-b', dest='filterbegin',
-                        type=valid_date,
-                        help='print only events newer then or equal to passed '
-                        'date; format YYYY-MM-DD')
-    parser.add_argument('--name', '-n', dest='filtername',
-                        help='print only events the subject of which contains '
-                        'passed string; case-insensitive')
+@dataclass
+class Event:
+    name: str
+    begin: str
+    end: str
+    duration: int
+    all_day: bool
 
-    args = parser.parse_args()
+    @property
+    def date(self):
+        return self.begin.strftime('%F')
 
-    if args.filterbegin:
-        tz = tzlocal.get_localzone()
-        filterbegin_aware = tz.localize(args.filterbegin)
-    else:
-        filterbegin_aware = None
-
-    events = parse_ics(args.inputfile)
-    events_filtered = filter_events(
-        events,
-        begin=filterbegin_aware,
-        name=args.filtername
-    )
-    events_sorted = sorted(events_filtered, key=lambda x: x['begin'])
-    [
-        print_event(
-            x['name'],
-            x['begin'],
-            x['end'],
-            x['duration'],
-            x['all_day']
+    @property
+    def time(self):
+        if self.all_day:
+            return ''
+        return '{} - {}'.format(
+            self.begin.strftime('%H:%M'),
+            self.end.strftime('%H:%M')
         )
-        for x in events_sorted
-    ]
+
+    @property
+    def hours(self):
+        if self.all_day:
+            return ''
+        return '{:.2f}h'.format(self.duration / 3600)
+
+    def __repr__(self):
+        return
 
 
 def valid_date(s):
@@ -55,15 +46,21 @@ def valid_date(s):
         raise argparse.ArgumentTypeError(msg)
 
 
-def filter_events(events, begin=None, name=None):
-    filtered = events
-    if begin:
-        filtered = filter(lambda x: x['begin'] > begin,
-                          filtered)
-    if name:
-        filtered = filter(lambda x: name.lower() in x['name'].lower(),
-                          filtered)
-    return filtered
+def filter_events_newer_than(events, begin):
+    if not begin:
+        return events
+    tz = tzlocal.get_localzone()
+    begin_localized = tz.localize(begin)
+    return filter(lambda event: event.begin > begin_localized, events)
+
+
+def filter_events_by_name(events, name):
+    if not name:
+        return events
+    return filter(
+        lambda event: name.lower() in event.name.lower(),
+        events
+    )
 
 
 def parse_ics(file_path):
@@ -78,30 +75,57 @@ def parse_ics(file_path):
                 all_day = False
                 timezone = event.begin.datetime.tzinfo
                 end = event.end.to(timezone)
-            yield({
-                'name': event.name,
-                'begin': event.begin.datetime,
-                'end': end.datetime,
-                'duration': event.duration.seconds,
-                'all_day': all_day
-            })
+            yield Event(
+                name=event.name,
+                begin=event.begin.datetime,
+                end=end.datetime,
+                duration=event.duration.seconds,
+                all_day=all_day
+            )
 
 
-def print_event(subject, start, end, duration, all_day=False):
-    _date = start.strftime('%F')
-    if all_day:
-        _time = ''
-        end = ''
-        hours = ''
-    else:
-        _time = '{} - {}'.format(
-            start.strftime('%H:%M'),
-            end.strftime('%H:%M')
-        )
-        hours = '{:.2f}h'.format(duration / 3600)
-    print('{date}  {time:>13}  {hours:>6}  {subject}'.format(
-        date=_date,
-        time=_time,
-        hours=hours,
-        subject=subject
-    ))
+def print_event(event):
+    print(f'{event.date}  {event.time:>13}  {event.hours:>6}  {event.name}')
+
+
+def chain(*funcs):
+    def wrapped(x):
+        return reduce(lambda x, y: y(x), funcs, x)
+    return wrapped
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description=('ICS to TXT: Print an iCalendar (.ics) file in a '
+                     'human-readable plain text format.')
+    )
+    parser.add_argument(
+        '--input', '-i',
+        dest='input_file',
+        required=True,
+        help='input ICS file path'
+    )
+    parser.add_argument(
+        '--begin',
+        '-b',
+        dest='filter_begin',
+        type=valid_date,
+        help=('print only events newer than or equal to passed date; '
+              'format: YYYY-MM-DD')
+    )
+    parser.add_argument(
+        '--name',
+        '-s',
+        dest='filter_name',
+        help=('print only events the name of which contains passed string '
+              '(case-insensitive)')
+    )
+    args = parser.parse_args()
+    chain(
+        parse_ics,
+        partial(filter_events_newer_than, begin=args.filter_begin),
+        partial(filter_events_by_name, name=args.filter_name),
+        partial(sorted, key=lambda event: event.begin),
+        partial(map, print_event),
+        list
+    )(args.input_file)
