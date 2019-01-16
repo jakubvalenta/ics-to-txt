@@ -1,5 +1,6 @@
 import argparse
 import datetime
+import quopri
 from dataclasses import dataclass
 from functools import partial, reduce
 
@@ -33,9 +34,6 @@ class Event:
         if self.all_day:
             return ''
         return '{:.2f}h'.format(self.duration / 3600)
-
-    def __repr__(self):
-        return
 
 
 def valid_date(s):
@@ -75,8 +73,12 @@ def parse_ics(file_path):
                 all_day = False
                 timezone = event.begin.datetime.tzinfo
                 end = event.end.to(timezone)
+            try:
+                name = quopri.decodestring(event.name).decode()
+            except ValueError:
+                name = event.name
             yield Event(
-                name=event.name,
+                name=name,
                 begin=event.begin.datetime,
                 end=end.datetime,
                 duration=event.duration.seconds,
