@@ -1,6 +1,7 @@
 import argparse
 import datetime
 import quopri
+import pathlib
 from dataclasses import dataclass
 from functools import partial, reduce
 
@@ -62,28 +63,27 @@ def filter_events_by_name(events, name):
 
 
 def parse_ics(file_path):
-    with open(file_path) as f:
-        calendar = ics.Calendar(f)
-        for event in calendar.events:
-            end_minus_one_day = event.end.datetime - datetime.timedelta(days=1)
-            if event.begin.datetime == end_minus_one_day:
-                all_day = True
-                end = event.begin
-            else:
-                all_day = False
-                timezone = event.begin.datetime.tzinfo
-                end = event.end.to(timezone)
-            try:
-                name = quopri.decodestring(event.name).decode()
-            except ValueError:
-                name = event.name
-            yield Event(
-                name=name,
-                begin=event.begin.datetime,
-                end=end.datetime,
-                duration=event.duration.seconds,
-                all_day=all_day
-            )
+    calendar = ics.Calendar(pathlib.Path(file_path).read_text())
+    for event in calendar.events:
+        end_minus_one_day = event.end.datetime - datetime.timedelta(days=1)
+        if event.begin.datetime == end_minus_one_day:
+            all_day = True
+            end = event.begin
+        else:
+            all_day = False
+            timezone = event.begin.datetime.tzinfo
+            end = event.end.to(timezone)
+        try:
+            name = quopri.decodestring(event.name).decode()
+        except ValueError:
+            name = event.name
+        yield Event(
+            name=name,
+            begin=event.begin.datetime,
+            end=end.datetime,
+            duration=event.duration.seconds,
+            all_day=all_day
+        )
 
 
 def print_event(event):
